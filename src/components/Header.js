@@ -7,7 +7,7 @@ export default function Header() {
     <View style={headerStyles.container}>
       {/* Left Image */}
       <Image 
-        source={require('../../assets/black_Lotus.png')} 
+        source={require('../../assets/black_lotus.png')} 
         style={headerStyles.sideImage}
         resizeMode="contain"
         accessibilityRole="image"
