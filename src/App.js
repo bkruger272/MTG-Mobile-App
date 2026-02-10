@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { View, TextInput, TouchableOpacity, SafeAreaView, ScrollView, Text, StatusBar, Platform } from 'react-native';
-import { styles, COLORS } from './Styles/theme'; 
-import { apiService } from './services/api';     
+import { styles, COLORS } from './Styles/theme';    
 import ResultCard from './components/ResultCard';
 import HistoryChips from './components/HistoryChips';
 import SuggestionBox from './components/SuggestionBox';
 import Header from './components/Header';
+import { searchKeywords, getSuggestionKeys } from './services/api';
 
 export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -16,11 +16,12 @@ export default function App() {
   const [suggestions, setSuggestions] = useState([]);
   const [masterList, setMasterList] = useState([]); 
   
-// 1. Effects stay at the top
+// 1. Load suggestion keys on mount
 useEffect(() => {
   const loadSuggestions = async () => {
     try {
-      const data = await apiService.getSuggestionKeys();
+      // REMOVE 'apiService.'
+      const data = await getSuggestionKeys(); 
       setMasterList(data);
     } catch (error) {
       console.error("Master list failed to load");
@@ -37,7 +38,7 @@ async function handleSearch(term) {
   setLoading(true);
   try {
     
-    const data = await apiService.searchKeyword(wordToSearch);
+    const data = await searchKeywords(wordToSearch);
 
     if (Array.isArray(data) && data.length > 0) {
       const result = data[0];

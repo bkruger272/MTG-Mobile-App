@@ -16,14 +16,20 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.bkruger.MTGLookupApp",
+      "versionCode": 1, 
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      },
-      "edgeToEdgeEnabled": true
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "a97ae721-5556-4d1a-bcd1-2885b45feb7c"
+      }
     }
   }
 }
