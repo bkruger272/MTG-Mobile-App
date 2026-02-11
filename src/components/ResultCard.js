@@ -1,29 +1,43 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
-import { styles, COLORS } from '../Styles/theme';
+import { styles } from '../Styles/theme'; // Adjust path if needed
 
-export default function ResultCard({ item, isPinned, onPin, onUnpin }) {
+const ResultCard = ({ item, isPinned, onPin }) => {
+  // 1. Safety check: If item is undefined, don't render anything
+  if (!item) return null;
+
+  // 2. Logic for labels
+  const sourceLabel = item.source === 'scryfall' ? 'SCRYFALL DATA' : 'REFERENCE GUIDE';
+  const badgeColor = item.source === 'scryfall' ? '#2196F3' : '#673AB7';
+
   return (
-    <View style={[styles.cardContainer, isPinned && { borderLeftColor: 'gold' }]}>
-      <View style={styles.cardHeader}>
-        <Text style={styles.cardTitle}>{item.name} {isPinned ? '(Pinned)' : ''}</Text>
-        
-        <View style={{ flexDirection: 'row' }}>
-          {!isPinned ? (
-            <TouchableOpacity onPress={() => onPin(item)} style={styles.pinButton}>
-              <Text style={{ color: 'black', fontWeight: 'bold', fontSize: 10 }}>PIN</Text>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity 
-              onPress={() => onUnpin(item)} 
-              style={[styles.pinButton, { backgroundColor: COLORS.artifactFrame }]}
-            >
-              <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 10 }}>UNPIN</Text>
-            </TouchableOpacity>
-          )}
+    <View style={[styles.card, { borderLeftWidth: 5, borderLeftColor: badgeColor, marginBottom: 15, padding: 15, backgroundColor: '#1e1e1e', borderRadius: 8 }]}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <View style={{ flex: 1 }}>
+          {/* Use item.name, not just item */}
+          <Text style={{ color: 'white', fontSize: 18, fontWeight: 'bold' }}>{item.name}</Text>
+          
+          <View style={{ 
+            backgroundColor: badgeColor, 
+            alignSelf: 'flex-start', 
+            paddingHorizontal: 6, 
+            paddingVertical: 2, 
+            borderRadius: 4,
+            marginVertical: 5 
+          }}>
+            <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold' }}>{sourceLabel}</Text>
+          </View>
         </View>
+
+        <TouchableOpacity onPress={() => onPin(item)} style={{ padding: 5 }}>
+          <Text style={{ fontSize: 20 }}>{isPinned ? "📌" : "📍"}</Text>
+        </TouchableOpacity>
       </View>
-      <Text style={styles.cardDescription}>{item.description || item.definition}</Text>
+
+      {/* Use item.description, not just item */}
+      <Text style={{ color: '#ccc', marginTop: 5, lineHeight: 20 }}>{item.description}</Text>
     </View>
   );
-}
+};
+
+export default ResultCard;

@@ -17,12 +17,24 @@
     },
     "android": {
       "package": "com.bkruger.MTGLookupApp",
-      "versionCode": 1, 
+      "versionCode": 7,
+      "permissions": [
+        "CAMERA",
+        "android.permission.CAMERA"
+      ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       }
     },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow MTG Scanner to use the camera to identify card names."
+        }
+      ]
+    ],
     "web": {
       "favicon": "./assets/favicon.png"
     },

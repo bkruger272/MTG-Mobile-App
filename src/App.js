@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, TextInput, TouchableOpacity, SafeAreaView, ScrollView, Text, StatusBar, Platform } from 'react-native';
+import { View, TextInput, TouchableOpacity, SafeAreaView, ScrollView, Text, StatusBar, Platform,Keyboard } from 'react-native';
 import { styles, COLORS } from './Styles/theme';    
 import ResultCard from './components/ResultCard';
 import HistoryChips from './components/HistoryChips';
@@ -11,11 +11,25 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [results, setResults] = useState([]);
   const [history, setHistory] = useState([]);
-  const [pinned, setPinned] = useState([]); 
   const [loading, setLoading] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
   const [masterList, setMasterList] = useState([]); 
-  
+  const [currentResult, setCurrentResult] = useState(null); 
+  const [pinnedWords, setPinnedWords] = useState([]);    
+
+// 0. Load helper to wake up server for free hosting, pervents lag time
+  useEffect(() => {
+    // This is our "Pre-warm" call
+    const wakeUpServer = async () => {
+      try {
+        await fetch('https://mtg-keyword-backend.onrender.com/health');
+        console.log("Backend wake-up signal sent.");
+      } catch (error) {
+        console.log("Server is still sleeping or warming up...");
+      }
+    };
+    wakeUpServer();
+  }, []);
 // 1. Load suggestion keys on mount
 useEffect(() => {
   const loadSuggestions = async () => {
@@ -40,15 +54,21 @@ async function handleSearch(term) {
     
     const data = await searchKeywords(wordToSearch);
 
+    if (data === null) return;
+
     if (Array.isArray(data) && data.length > 0) {
       const result = data[0];
-      const formattedResult = {
+      
+        const formattedResult = {
         name: result.name,
-        description: result.definition 
-      };
+        description: result.definition,
+        source: result.source 
+        };  
+
+
       setResults([formattedResult]);
       
-      // Update history
+      // Update history (only if it's a new word)
       if (!history.includes(formattedResult.name)) {
         setHistory([formattedResult.name, ...history].slice(0, 5));
       }
@@ -56,12 +76,15 @@ async function handleSearch(term) {
       alert("No definition found for " + wordToSearch);
     }
   } catch (error) {
+  // Only alert if it's a REAL error, not an Abort
+  if (error.name !== 'AbortError') {
     alert("Connection to server failed.");
+    }
   } finally {
     setLoading(false);
   }
 }
-
+//handle input change so that it will filter on text change
 const handleInputchange = (text) => {
   setSearchQuery(text);
 
@@ -71,11 +94,27 @@ const handleInputchange = (text) => {
       keyword.toLowerCase().startsWith(text.toLowerCase())
     );
     setSuggestions(filteredSuggestions);
+    } else {
+      setSuggestions([]);
+    }
+  } ;
+
+const handlePin = (item) => {
+  if (!item || !item.name) {
+    alert("Search a valid keyword first!");
+    return;
+  }
+
+  const isAlreadyPinned = pinnedWords.some(p => p.name === item.name);
+
+  if (isAlreadyPinned) {
+    // Remove it
+    setPinnedWords(prev => prev.filter(p => p.name !== item.name));
   } else {
-    setSuggestions([]);
+    // Add it
+    setPinnedWords(prev => [item, ...prev]);
   }
 };
-
 
   return (
 <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.background }}>
@@ -84,9 +123,15 @@ const handleInputchange = (text) => {
         <TextInput 
           style={styles.TextInputContainer} 
           placeholder="Enter a keyword..." 
-          placeholderTextColor={COLORS.textLight} // Uses the variable from your theme
+          placeholderTextColor={COLORS.textLight} 
           value={searchQuery} 
           onChangeText={handleInputchange} 
+
+          returnKeyType="search"
+          onSubmitEditing={() => {
+            handleSearch();
+            Keyboard.dismiss();
+          }}
         />
 
         <SuggestionBox 
@@ -100,7 +145,12 @@ const handleInputchange = (text) => {
         {/* A View to lay out the buttons horizontally */}
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '80%', marginTop: 10 }}>
           {/* This is the button to perform search */}
-          <TouchableOpacity style={{backgroundColor: COLORS.border, padding: 10, borderRadius: 5, flex: 1, marginRight: 10}} onPress={() => handleSearch()}>
+          <TouchableOpacity style={{backgroundColor: COLORS.border, padding: 10, borderRadius: 5, flex: 1, marginRight: 10}} 
+                            onPress={() => {
+                                      handleSearch(); 
+                                      Keyboard.dismiss();
+                                    }}
+                                    >
             <Text style={{color: COLORS.textLight, fontWeight: 'bold'}}>Search</Text>
           </TouchableOpacity>
         {/* This is the button to clear search history */}
@@ -108,7 +158,7 @@ const handleInputchange = (text) => {
           <Text style={{color: COLORS.textLight, fontWeight: 'bold'}}>Clear History</Text>
         </TouchableOpacity>
         {/* This is the button to clear pinned items */}
-        <TouchableOpacity style={{backgroundColor: COLORS.border, padding: 10, borderRadius: 5, flex: 1, marginRight: 10}} onPress={() => setPinned([])}>
+        <TouchableOpacity style={{backgroundColor: COLORS.border, padding: 10, borderRadius: 5, flex: 1, marginRight: 10}} onPress={() => setPinnedWords([])}>
           <Text style={{color: COLORS.textLight, fontWeight: 'bold'}}>Clear Pinned</Text>
         </TouchableOpacity>
         </View>
@@ -121,25 +171,25 @@ const handleInputchange = (text) => {
           }} 
         />
         {loading && <Text style={{ color: 'gold', marginTop: 10 }}>Searching Grimoire...</Text>}
-        <ScrollView style={styles.ScrollViewContainer}>
-          {pinned.map((item, index) => (
+        <ScrollView style={styles.ScrollViewContainer}
+                    keyboardDismissMode="on-drag">
+          {pinnedWords.map((item, index) => (
             <ResultCard 
-              key={`pinned-${index}`} 
-              item={item} 
-              isPinned={true} 
-              onUnpin={(item) => setPinned(pinned.filter(p => p !== item))} 
-            />
+                  key={`pinned-${index}`} 
+                  item={item} 
+                  isPinned={true} 
+                  onPin={() => handlePin(item)} 
+                />
           ))}
-
           {results.map((item, index) => (
-            <ResultCard 
-              key={`result-${index}`} 
-              item={item} 
-              isPinned={false} 
-              onPin={(item) => setPinned([...pinned, item])} 
-            />
-          ))}
-        </ScrollView>
+              <ResultCard 
+                key={`result-${index}`} 
+                item={item} 
+                isPinned={pinnedWords.some(p => p.name === item.name)} 
+                onPin={() => handlePin(item)} 
+              />
+            ))}
+          </ScrollView>
       </View>
       
       {/* Footer */}
