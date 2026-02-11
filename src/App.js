@@ -56,27 +56,35 @@ async function handleSearch(term) {
         // The API returns an array, so we check the first item
         const result = data && data[0];
 
-        if (!result || result.source === 'not_found') {
-            // HELPFUL UI FEEDBACK
-            alert(
-                `Keyword Not Found: "${wordToSearch}"\n\n` +
-                `Double-check your spelling or try a different keyword. If this is a new mechanic, it might not be in the Grimoire yet!`
-            );
-            setResults([]); // Clear any old results
-        } else if (result.source === 'error') {
-            alert("The Grimoire is having trouble connecting. Check your internet!");
-        } else {
-            // Success!
-            const formattedResult = {
-                name: result.name || wordToSearch,
-                description: result.definition,
-                source: result.source
-            };
-            setResults([formattedResult]);
-            
-            if (!history.includes(formattedResult.name)) {
-                setHistory([formattedResult.name, ...history].slice(0, 5));
-            }
+           if (!result || result.source === 'not_found') {
+           alert(`Keyword Not Found: "${wordToSearch}"\n\n` +
+                  `The Grimoire doesn't recognize this term. Please check your spelling!`);
+            setResults([]); 
+            } else if (result.source === 'error') {
+            alert("The Grimoire is having trouble connecting...");
+            } else if (
+              !result.definition || 
+              result.definition.includes("no reminder text available") ||
+              result.definition === "Definition currently unavailable."
+              ) {
+              // NEW CHECK: This catches "Test" or keywords found but without actual text
+              alert(
+                  `"${wordToSearch}" is not a valid Keyword.\n\n` +
+                   `The Grimoire found a match for that name, but it isn't a keyword mechanic with reminder text. Make sure you're searching for abilities like 'Flying', 'Toxic', or 'Ward'.`
+              );
+              setResults([]);
+          } else {
+              // Success! Only run this if we have a REAL definition
+              const formattedResult = {
+                  name: result.name || wordToSearch,
+                  description: result.definition,
+                  source: result.source
+              };
+              setResults([formattedResult]);
+              setCurrentResult(formattedResult);
+              if (!history.includes(formattedResult.name)) {
+                  setHistory([formattedResult.name, ...history].slice(0, 5));
+              }
         }
     } catch (error) {
         if (error.name !== 'AbortError') {
@@ -100,7 +108,12 @@ const handleInputchange = (text) => {
       setSuggestions([]);
     }
   } ;
-
+  const handleSelectSuggestion = (word) => {
+  Keyboard.dismiss();      // 1. Hide keyboard
+  setSearchQuery(word);    // 2. Update the text box
+  setSuggestions([]);      // 3. Clear the suggestion list
+  handleSearch(word);      // 4. Run the actual search
+  };
 const handlePin = (item) => {
   if (!item || !item.name) {
     alert("Search a valid keyword first!");
@@ -141,6 +154,7 @@ const handlePin = (item) => {
           onSelect={(item) => {
             setSearchQuery(item);
             setSuggestions([]);
+            Keyboard.dismiss();
             handleSearch(item);
           }} 
         />
