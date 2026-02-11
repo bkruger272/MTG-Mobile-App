@@ -46,43 +46,45 @@ useEffect(() => {
 
 // 2. Logic functions follow
 async function handleSearch(term) {
-  const wordToSearch = (term || searchQuery).trim();
-  if (!wordToSearch) return;
+    const wordToSearch = (term || searchQuery).trim();
+    if (!wordToSearch) return;
 
-  setLoading(true);
-  try {
-    
-    const data = await searchKeywords(wordToSearch);
+    setLoading(true);
+    try {
+        const data = await searchKeywords(wordToSearch);
+        
+        // The API returns an array, so we check the first item
+        const result = data && data[0];
 
-    if (data === null) return;
-
-    if (Array.isArray(data) && data.length > 0) {
-      const result = data[0];
-      
-        const formattedResult = {
-        name: result.name,
-        description: result.definition,
-        source: result.source 
-        };  
-
-
-      setResults([formattedResult]);
-      
-      // Update history (only if it's a new word)
-      if (!history.includes(formattedResult.name)) {
-        setHistory([formattedResult.name, ...history].slice(0, 5));
-      }
-    } else {
-      alert("No definition found for " + wordToSearch);
+        if (!result || result.source === 'not_found') {
+            // HELPFUL UI FEEDBACK
+            alert(
+                `Keyword Not Found: "${wordToSearch}"\n\n` +
+                `Double-check your spelling or try a different keyword. If this is a new mechanic, it might not be in the Grimoire yet!`
+            );
+            setResults([]); // Clear any old results
+        } else if (result.source === 'error') {
+            alert("The Grimoire is having trouble connecting. Check your internet!");
+        } else {
+            // Success!
+            const formattedResult = {
+                name: result.name || wordToSearch,
+                description: result.definition,
+                source: result.source
+            };
+            setResults([formattedResult]);
+            
+            if (!history.includes(formattedResult.name)) {
+                setHistory([formattedResult.name, ...history].slice(0, 5));
+            }
+        }
+    } catch (error) {
+        if (error.name !== 'AbortError') {
+            alert("Network error. Please try again.");
+        }
+    } finally {
+        setLoading(false);
     }
-  } catch (error) {
-  // Only alert if it's a REAL error, not an Abort
-  if (error.name !== 'AbortError') {
-    alert("Connection to server failed.");
-    }
-  } finally {
-    setLoading(false);
-  }
 }
 //handle input change so that it will filter on text change
 const handleInputchange = (text) => {
@@ -195,7 +197,7 @@ const handlePin = (item) => {
       {/* Footer */}
       <View style={{ padding: 20, backgroundColor: COLORS.background }}>
         <Text style={{ color: COLORS.textLight, fontSize: 10, textAlign: 'center', opacity: 0.6 }}>
-          Version 1.0.0 | © 2024 Brandon Kruger{"\n"}
+          Version 1.0.2 | © 2026 Brandon Kruger{"\n"}
           This app is unofficial Fan Content permitted under the Fan Content Policy.
         </Text>
       </View>
