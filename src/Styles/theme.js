@@ -81,6 +81,7 @@ export const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.gold,
     elevation: 5,
+    maxHeight: 200, // Limit height for scrollability
   },
   suggestionItem: {
     padding: 10,
