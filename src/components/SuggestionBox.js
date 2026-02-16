@@ -1,28 +1,31 @@
 import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+// Added ScrollView to the imports below!
+import { View, Text, TouchableOpacity, ScrollView } from 'react-native'; 
 import { styles } from '../Styles/theme';
 
 export default function SuggestionBox({ suggestions, onSelect }) {
-  if (suggestions.length === 0) return null;
+    if (suggestions.length === 0) return null;
 
     return (
-            <View style={styles.outerWrapper}>
-                {/* We use a ScrollView with a set Max Height */}
-                <ScrollView 
-                    style={styles.container} 
-                    keyboardShouldPersistTaps="handled"
-                    nestedScrollEnabled={true} // Crucial for Android
-                >
-                    {suggestions.map((item, index) => (
-                        <TouchableOpacity 
-                            key={index} 
-                            style={styles.item} 
-                            onPress={() => onSelect(item)}
-                        >
-                            <Text style={styles.text}>{item}</Text>
-                        </TouchableOpacity>
-                    ))}
-                </ScrollView>
-            </View>
-        );
+        /* Use the 'suggestionBox' style name from your theme.js */
+        <View style={styles.suggestionBox}> 
+            <ScrollView 
+                keyboardShouldPersistTaps="handled"
+                nestedScrollEnabled={true} 
+            >
+                {suggestions.map((item, index) => (
+                    /* Note: Ensure your theme.js has 'suggestionItem' 
+                       and 'suggestionText' styles, or use inline styles 
+                    */
+                    <TouchableOpacity 
+                        key={index} 
+                        style={{ padding: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.1)' }} 
+                        onPress={() => onSelect(item)}
+                    >
+                        <Text style={{ color: '#E0E0E0', fontSize: 16 }}>{item}</Text>
+                    </TouchableOpacity>
+                ))}
+            </ScrollView>
+        </View>
+    );
 }
