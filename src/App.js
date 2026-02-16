@@ -52,39 +52,33 @@ async function handleSearch(term) {
     setLoading(true);
     try {
         const data = await searchKeywords(wordToSearch);
-        
-        // The API returns an array, so we check the first item
         const result = data && data[0];
 
-           if (!result || result.source === 'not_found') {
-           alert(`Keyword Not Found: "${wordToSearch}"\n\n` +
-                  `The Grimoire doesn't recognize this term. Please check your spelling!`);
+        // 1. Total Miss or Error from Server
+        if (!result || result.source === 'not_found' || !result.definition) {
+            alert(
+                `Keyword Not Found: "${wordToSearch}"\n\n` +
+                `The Grimoire doesn't recognize this term. Please check your spelling or try a keyword like 'Flying' or 'Ward'.`
+            );
             setResults([]); 
-            } else if (result.source === 'error') {
-            alert("The Grimoire is having trouble connecting...");
-            } else if (
-              !result.definition || 
-              result.definition.includes("no reminder text available") ||
-              result.definition === "Definition currently unavailable."
-              ) {
-              // NEW CHECK: This catches "Test" or keywords found but without actual text
-              alert(
-                  `"${wordToSearch}" is not a valid Keyword.\n\n` +
-                   `The Grimoire found a match for that name, but it isn't a keyword mechanic with reminder text. Make sure you're searching for abilities like 'Flying', 'Toxic', or 'Ward'.`
-              );
-              setResults([]);
-          } else {
-              // Success! Only run this if we have a REAL definition
-              const formattedResult = {
-                  name: result.name || wordToSearch,
-                  description: result.definition,
-                  source: result.source
-              };
-              setResults([formattedResult]);
-              setCurrentResult(formattedResult);
-              if (!history.includes(formattedResult.name)) {
-                  setHistory([formattedResult.name, ...history].slice(0, 5));
-              }
+        } 
+        else if (result.source === 'error') {
+            alert("The Grimoire is having trouble connecting. Check your internet!");
+        } 
+        // 2. SUCCESS: If we have a result and a definition, it's a win!
+        else {
+            const formattedResult = {
+                name: result.name || wordToSearch,
+                description: result.definition,
+                source: result.source
+            };
+            
+            setResults([formattedResult]);
+            setCurrentResult(formattedResult);
+            
+            if (!history.includes(formattedResult.name)) {
+                setHistory([formattedResult.name, ...history].slice(0, 5));
+            }
         }
     } catch (error) {
         if (error.name !== 'AbortError') {
