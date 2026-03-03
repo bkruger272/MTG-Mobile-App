@@ -4,7 +4,6 @@
     "slug": "MTG-Mobile-App",
     "scheme": "mtglookupapp",
     "version": "1.0.0",
-    "newArchEnabled": true,
     "android": {
       "package": "com.bkruger.MTGLookupApp",
       "versionCode": 7,

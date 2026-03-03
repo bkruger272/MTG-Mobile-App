@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, TextInput, TouchableOpacity, SafeAreaView, ScrollView, Text, StatusBar, Platform,Keyboard } from 'react-native';
+import { View, TextInput, TouchableOpacity, SafeAreaView, ScrollView, Text, StatusBar, Platform,Keyboard,StyleSheet } from 'react-native';
 import { styles, COLORS } from './Styles/theme';    
 import ResultCard from './components/ResultCard';
 import HistoryChips from './components/HistoryChips';
@@ -208,16 +208,6 @@ const handlePin = (item) => {
         <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.background }}>
         <StatusBar barStyle="light-content" />
         
-        {/* 1. FULL SCREEN SCANNER OVERLAY */}
-        {showScanner && (
-            <View style={StyleSheet.absoluteFill}>
-            <ScannerView 
-            onClose={() => setShowScanner(false)} 
-            onCardDetected={handleScanResult} 
-            torch={torchOn} // Pass this down!
-            />
-            </View>
-        )}
 
         {/* 2. HEADER */}
         <Header /> 
@@ -303,7 +293,19 @@ const handlePin = (item) => {
             ))}
             </ScrollView>
         </View>
-        
+        {/* 1. FULL SCREEN SCANNER OVERLAY */}
+        {showScanner && (
+            <View style={StyleSheet.absoluteFillObject}> 
+                <ScannerView 
+                    onClose={() => setShowScanner(false)} 
+                    onCardDetected={(name) => {
+                        handleScanResult(name);
+                        setShowScanner(false); // Close it once we find the card!
+                    }} 
+                    torch={torchOn} 
+                />
+            </View>
+        )}
         {/* 7. FOOTER */}
         <View style={{ padding: 15, backgroundColor: COLORS.background }}>
             <Text style={{ color: COLORS.textLight, fontSize: 10, textAlign: 'center', opacity: 0.6 }}>
