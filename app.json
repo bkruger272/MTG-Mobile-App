@@ -2,19 +2,9 @@
   "expo": {
     "name": "MTG-Mobile-App",
     "slug": "MTG-Mobile-App",
+    "scheme": "mtglookupapp",
     "version": "1.0.0",
-    "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
     "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
-    "ios": {
-      "supportsTablet": true
-    },
     "android": {
       "package": "com.bkruger.MTGLookupApp",
       "versionCode": 7,
@@ -24,20 +14,18 @@
       ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#121212"
       }
     },
     "plugins": [
       [
-        "expo-camera",
+        "react-native-vision-camera",
         {
-          "cameraPermission": "Allow MTG Scanner to use the camera to identify card names."
+          "cameraPermissionText": "Allow MTG Scanner to use the camera to identify card names.",
+          "enableMicrophonePermission": false
         }
       ]
     ],
-    "web": {
-      "favicon": "./assets/favicon.png"
-    },
     "extra": {
       "eas": {
         "projectId": "a97ae721-5556-4d1a-bcd1-2885b45feb7c"

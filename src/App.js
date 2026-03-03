@@ -6,6 +6,7 @@ import HistoryChips from './components/HistoryChips';
 import SuggestionBox from './components/SuggestionBox';
 import Header from './components/Header';
 import { searchKeywords, getSuggestionKeys } from './services/api';
+import ScannerView from './components/ScannerView';
 
 export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -16,6 +17,8 @@ export default function App() {
   const [masterList, setMasterList] = useState([]); 
   const [currentResult, setCurrentResult] = useState(null); 
   const [pinnedWords, setPinnedWords] = useState([]);    
+  const [showScanner, setShowScanner] = useState(false);
+  const [torchOn, setTorchOn] = useState(false);
 
 // 0. Load helper to wake up server for free hosting, pervents lag time
   useEffect(() => {
@@ -97,15 +100,32 @@ const handleInputchange = (text) => {
   setSearchQuery(text);
 
   if (text.length > 1) {
-    // Filter the masterList we got from the server instead of mockKeywords
-    const filteredSuggestions = masterList.filter(keyword => 
-      keyword.toLowerCase().includes(text.toLowerCase())
-    );
+    const filteredSuggestions = masterList
+      .filter(keyword => {
+        const lowerKeyword = keyword.toLowerCase();
+        const lowerSearch = text.toLowerCase();
+        
+        // 1. MUST start with or contain the search term
+        const matches = lowerKeyword.includes(lowerSearch);
+        
+        // 2. BLACKLIST: Remove junk words that aren't real keywords
+        const isJunk = ["rally", "chroma", "landfall", "constellation"].includes(lowerKeyword);
+        
+        return matches && !isJunk;
+      })
+      // 3. SORT: Put words that START with the search term at the top
+      .sort((a, b) => {
+        const aStarts = a.toLowerCase().startsWith(text.toLowerCase());
+        const bStarts = b.toLowerCase().startsWith(text.toLowerCase());
+        return aStarts === bStarts ? 0 : aStarts ? -1 : 1;
+      });
+
     setSuggestions(filteredSuggestions);
-    } else {
-      setSuggestions([]);
-    }
-  } ;
+  } else {
+    setSuggestions([]);
+  }
+};
+
 const handlePin = (item) => {
   if (!item || !item.name) {
     alert("Search a valid keyword first!");
@@ -123,93 +143,175 @@ const handlePin = (item) => {
   }
 };
 
-  return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.background }}>
+
+  const handleScanResult = async (detectedName) => {
+    if (!detectedName) return;
+    
+    setShowScanner(false);
+    setLoading(true);
+    setSearchQuery(detectedName);
+
+    try {
+      // 1. Get exact card data from Scryfall
+      const response = await fetch(`https://api.scryfall.com/cards/named?exact=${encodeURIComponent(detectedName)}`);
+      
+      if (!response.ok) {
+      alert(`The Grimoire couldn't find a match for "${detectedName}". Try a different angle!`);
+      return;
+    }
+      
+      const cardData = await response.json();
+      
+      setSearchQuery(cardData.name);
+
+      const keywords = cardData.keywords || [];
+      
+      if (keywords.length === 0) {
+        alert(`Found "${cardData.name}", but it has no keyword abilities!`);
+        return;
+      }
+
+      // 3. Automatically fetch definitions and "Pin" them
+      const newPinnedItems = [];
+        for (const word of keywordsFound) {
+            try {
+                const definitionData = await searchKeywords(word);
+                if (definitionData && definitionData[0]) {
+                newPinnedItems.push({
+                    name: definitionData[0].name,
+                    description: definitionData[0].definition,
+                    source: definitionData[0].source,
+                });
+                }
+            } catch (e) {
+                console.log(`Definition for ${word} not found in backend.`);
+            }
+        }
+
+      // 4. Update the UI with the pinned results
+        setPinnedWords((prev) => {
+            const existingNames = new Set(prev.map((p) => p.name));
+            const filteredNew = newPinnedItems.filter((item) => !existingNames.has(item.name));
+            return [...filteredNew, ...prev];
+            });
+
+        } catch (error) {
+            console.error("Scan processing failed:", error);
+            alert("The Grimoire is flickering. Check your internet connection!");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+
+    return (
+        <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.background }}>
+        <StatusBar barStyle="light-content" />
+        
+        {/* 1. FULL SCREEN SCANNER OVERLAY */}
+        {showScanner && (
+            <View style={StyleSheet.absoluteFill}>
+            <ScannerView 
+            onClose={() => setShowScanner(false)} 
+            onCardDetected={handleScanResult} 
+            torch={torchOn} // Pass this down!
+            />
+            </View>
+        )}
+
+        {/* 2. HEADER */}
         <Header /> 
+
         <View style={styles.container}>
+            {/* 3. SEARCH INPUT */}
             <TextInput 
-                style={styles.TextInputContainer} 
-                placeholder="Enter a keyword..." 
-                placeholderTextColor={COLORS.textLight} 
-                value={searchQuery} 
-                onChangeText={handleInputchange} 
-                returnKeyType="search"
-                onSubmitEditing={() => {
-                    handleSearch();
-                    Keyboard.dismiss();
-                }}
+            style={styles.TextInputContainer} 
+            placeholder="Enter a keyword..." 
+            placeholderTextColor={COLORS.textLight} 
+            value={searchQuery} 
+            onChangeText={handleInputchange} 
+            returnKeyType="search"
+            onSubmitEditing={() => {
+                handleSearch();
+                Keyboard.dismiss();
+            }}
             />
+            
             <SuggestionBox 
-                suggestions={suggestions} 
-                onSelect={handleSelectSuggestion} 
+            suggestions={suggestions} 
+            onSelect={handleSelectSuggestion} 
             />
 
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '80%', marginTop: 10 }}>
-                <TouchableOpacity 
-                    style={{backgroundColor: COLORS.border, padding: 10, borderRadius: 5, flex: 1, marginRight: 10}} 
-                    onPress={() => {
-                        handleSearch(); 
-                        Keyboard.dismiss();
-                    }}
-                >
-                    <Text style={{color: COLORS.textLight, fontWeight: 'bold'}}>Search</Text>
-                </TouchableOpacity>
+            {/* 4. BUTTON ROW (Now includes the Scan Button) */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '90%', marginTop: 10 }}>
+            <TouchableOpacity 
+                style={{ backgroundColor: COLORS.gold, padding: 10, borderRadius: 5, flex: 1, marginRight: 5 }} 
+                onPress={() => setShowScanner(true)}
+            >
+                <Text style={{ color: 'black', fontWeight: 'bold', textAlign: 'center' }}>📸 Scan</Text>
+            </TouchableOpacity>
 
-                <TouchableOpacity 
-                    style={{backgroundColor: COLORS.border, padding: 10, borderRadius: 5, flex: 1, marginRight: 10}} 
-                    onPress={() => setHistory([])}
-                >
-                    <Text style={{color: COLORS.textLight, fontWeight: 'bold'}}>Clear History</Text>
-                </TouchableOpacity>
+            <TouchableOpacity 
+                style={{ backgroundColor: COLORS.border, padding: 10, borderRadius: 5, flex: 1, marginRight: 5 }} 
+                onPress={() => {
+                handleSearch(); 
+                Keyboard.dismiss();
+                }}
+            >
+                <Text style={{ color: COLORS.textLight, fontWeight: 'bold', textAlign: 'center' }}>Search</Text>
+            </TouchableOpacity>
 
-                <TouchableOpacity 
-                    style={{backgroundColor: COLORS.border, padding: 10, borderRadius: 5, flex: 1, marginRight: 10}} 
-                    onPress={() => setPinnedWords([])}
-                >
-                    <Text style={{color: COLORS.textLight, fontWeight: 'bold'}}>Clear Pinned</Text>
-                </TouchableOpacity>
+            <TouchableOpacity 
+                style={{ backgroundColor: COLORS.border, padding: 10, borderRadius: 5, flex: 1 }} 
+                onPress={() => setHistory([])}
+            >
+                <Text style={{ color: COLORS.textLight, fontWeight: 'bold', textAlign: 'center' }}>Clear</Text>
+            </TouchableOpacity>
             </View>
 
+            {/* 5. HISTORY CHIPS */}
             <HistoryChips 
-                history={history} 
-                onChipPress={(item) => {
-                    setSearchQuery(item);
-                    handleSearch(item);
-                }} 
+            history={history} 
+            onChipPress={(item) => {
+                setSearchQuery(item);
+                handleSearch(item);
+            }} 
             />
 
-            {loading && <Text style={{ color: 'gold', marginTop: 10 }}>Searching Grimoire...</Text>}
+            {loading && <Text style={{ color: 'gold', marginTop: 10 }}>Consulting the Grimoire...</Text>}
 
+            {/* 6. RESULTS AREA */}
             <ScrollView 
-                style={styles.ScrollViewContainer}
-                keyboardDismissMode="on-drag"
+            style={styles.ScrollViewContainer}
+            keyboardDismissMode="on-drag"
             >
-                {pinnedWords.map((item, index) => (
-                    <ResultCard 
-                        key={`pinned-${index}`} 
-                        item={item} 
-                        isPinned={true} 
-                        onPin={() => handlePin(item)} 
-                    />
-                ))}
-                {results.map((item, index) => (
-                    <ResultCard 
-                        key={`result-${index}`} 
-                        item={item} 
-                        isPinned={pinnedWords.some(p => p.name === item.name)} 
-                        onPin={() => handlePin(item)} 
-                    />
-                ))}
+            {pinnedWords.map((item, index) => (
+                <ResultCard 
+                key={`pinned-${index}`} 
+                item={item} 
+                isPinned={true} 
+                onPin={() => handlePin(item)} 
+                />
+            ))}
+            {results.map((item, index) => (
+                <ResultCard 
+                key={`result-${index}`} 
+                item={item} 
+                isPinned={pinnedWords.some(p => p.name === item.name)} 
+                onPin={() => handlePin(item)} 
+                />
+            ))}
             </ScrollView>
         </View>
         
-        <View style={{ padding: 20, backgroundColor: COLORS.background }}>
+        {/* 7. FOOTER */}
+        <View style={{ padding: 15, backgroundColor: COLORS.background }}>
             <Text style={{ color: COLORS.textLight, fontSize: 10, textAlign: 'center', opacity: 0.6 }}>
-                Version 1.0.2 | © 2026 Brandon Kruger{"\n"}
-                This app is unofficial Fan Content permitted under the Fan Content Policy.
+            Version 1.1.0 | © 2026 Brandon Kruger{"\n"}
+            Camera used for card identification only. No data is stored.
             </Text>
         </View>
-    </SafeAreaView>
-  );
+        </SafeAreaView>
+    );
 }
 
