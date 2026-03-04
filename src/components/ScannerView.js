@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react'; // Added useRef here
 import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
-import { 
-  Camera, 
-  useCameraDevice, 
-  useCameraPermission, 
-  useFrameProcessor, 
-  runOnJS 
+import {
+  Camera,
+  useCameraDevice,
+  useCameraPermission,
+  useFrameProcessor,
+  runOnJS
 } from 'react-native-vision-camera';
 import { COLORS } from '../Styles/theme';
 import MlkitOcr from 'react-native-mlkit-ocr';
@@ -26,7 +26,7 @@ export default function ScannerView({ onCardDetected, onClose }) {
     }
   }, [hasPermission, requestPermission]);
 
-const handleManualScan = () => {
+  const handleManualScan = () => {
     // This allows us to trigger the scan on demand
     if (detectedName && detectedName !== "Scanning...") {
       onCardDetected(detectedName);
@@ -37,43 +37,43 @@ const handleManualScan = () => {
 
 
 
-// ... inside your ScannerView component ...
+  // ... inside your ScannerView component ...
 
-const takeSnapshot = async () => {
-  if (camera.current && !isScanning) {
-    try {
-      setIsScanning(true);
-      setDetectedName("Consulting the Grimoire...");
+  const takeSnapshot = async () => {
+    if (camera.current && !isScanning) {
+      try {
+        setIsScanning(true);
+        setDetectedName("Consulting the Grimoire...");
 
-      // 1. Capture a high-res photo
-      const photo = await camera.current.takePhoto({
-        flash: 'off',
-      });
+        // 1. Capture a high-res photo
+        const photo = await camera.current.takePhoto({
+          flash: 'off',
+        });
 
-      // 2. Run the high-accuracy OCR on the file path
-      // Note: We use 'file://' prefix for Android paths
-      const result = await MlkitOcr.detectFromFile(`file://${photo.path}`);
+        // 2. Run the high-accuracy OCR on the file path
+        // Note: We use 'file://' prefix for Android paths
+        const result = await MlkitOcr.detectFromFile(`file://${photo.path}`);
 
-      if (result && result.length > 0) {
-        // Magic card names are almost always in the first detected block
-        const cardName = result[0].text.split('\n')[0];
-        
-        console.log("Found Card:", cardName);
-        setDetectedName(cardName);
+        if (result && result.length > 0) {
+          // Magic card names are almost always in the first detected block
+          const cardName = result[0].text.split('\n')[0];
 
-        // 3. Send to main app to trigger Trample/Haste banners!
-        onCardDetected(cardName);
-      } else {
-        alert("The Grimoire couldn't read the name. Try centering it in the box!");
+          console.log("Found Card:", cardName);
+          setDetectedName(cardName);
+
+          // 3. Send to main app to trigger Trample/Haste banners!
+          onCardDetected(cardName);
+        } else {
+          alert("The Grimoire couldn't read the name. Try centering it in the box!");
+        }
+      } catch (e) {
+        console.log("OCR Error:", e);
+        setDetectedName("Scan failed. Try again!");
+      } finally {
+        setIsScanning(false);
       }
-    } catch (e) {
-      console.log("OCR Error:", e);
-      setDetectedName("Scan failed. Try again!");
-    } finally {
-      setIsScanning(false);
     }
-  }
-};
+  };
 
   // 2. Disable the "Live" frame processor to stop the error flooding
   const frameProcessor = useFrameProcessor((frame) => {
@@ -97,19 +97,19 @@ const takeSnapshot = async () => {
         />
         <View style={styles.viewfinder} />
       </View>
-      
+
       <View style={styles.controls}>
         <Text style={styles.scanText}>
-           Manual Test Mode: Press Confirm to Snapshot
+          Manual Test Mode: Press Confirm to Snapshot
         </Text>
-        
+
         <View style={styles.buttonRow}>
           <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
             <Text style={styles.buttonText}>Cancel</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
-            style={styles.confirmButton} 
+          <TouchableOpacity
+            style={styles.confirmButton}
             onPress={takeSnapshot}
             disabled={isScanning}
           >
@@ -124,18 +124,18 @@ const takeSnapshot = async () => {
 }
 
 const styles = StyleSheet.create({
-  mainContainer: { 
-    flex: 1, 
-    backgroundColor: 'rgba(0,0,0,0.9)', 
-    justifyContent: 'center', 
+  mainContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.9)',
+    justifyContent: 'center',
     alignItems: 'center',
     paddingTop: 50
   },
   cameraContainer: {
     width: '85%',
-    aspectRatio: 3/4, // TCG card shape
+    aspectRatio: 3 / 4, // TCG card shape
     borderRadius: 20,
-    overflow: 'hidden', 
+    overflow: 'hidden',
     borderWidth: 2,
     borderColor: COLORS.gold,
     backgroundColor: 'black',
@@ -144,21 +144,21 @@ const styles = StyleSheet.create({
   camera: {
     flex: 1,
   },
-  viewfinder: { 
+  viewfinder: {
     position: 'absolute',
     top: 40,           // Move it to the top of the camera window
     alignSelf: 'center',
-    width: '90%',      
+    width: '90%',
     height: 45,        // Thin box just for the name
-    borderWidth: 2, 
-    borderColor: COLORS.gold, 
-    borderRadius: 5, 
-    backgroundColor: 'rgba(255,215,0,0.1)' 
+    borderWidth: 2,
+    borderColor: COLORS.gold,
+    borderRadius: 5,
+    backgroundColor: 'rgba(255,215,0,0.1)'
   },
   info: { color: 'white', textAlign: 'center', marginTop: 100 },
-  controls: { 
-    width: '100%', 
-    alignItems: 'center', 
+  controls: {
+    width: '100%',
+    alignItems: 'center',
     padding: 30,
     marginTop: 20
   },

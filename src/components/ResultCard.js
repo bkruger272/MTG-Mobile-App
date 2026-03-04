@@ -16,14 +16,14 @@ const ResultCard = ({ item, isPinned, onPin }) => {
         <View style={{ flex: 1 }}>
           {/* Use item.name, not just item */}
           <Text style={{ color: 'white', fontSize: 18, fontWeight: 'bold' }}>{item.name}</Text>
-          
-          <View style={{ 
-            backgroundColor: badgeColor, 
-            alignSelf: 'flex-start', 
-            paddingHorizontal: 6, 
-            paddingVertical: 2, 
+
+          <View style={{
+            backgroundColor: badgeColor,
+            alignSelf: 'flex-start',
+            paddingHorizontal: 6,
+            paddingVertical: 2,
             borderRadius: 4,
-            marginVertical: 5 
+            marginVertical: 5
           }}>
             <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold' }}>{sourceLabel}</Text>
           </View>

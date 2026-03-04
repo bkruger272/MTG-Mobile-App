@@ -8,12 +8,12 @@ const Header = () => {
   return (
     <View style={styles.headerContainer}>
       {/* The background image */}
-      <Image 
+      <Image
         source={require('../../assets/black_lotus.png')}
         style={styles.backgroundImage}
         resizeMode="cover"
       />
-      
+
       {/* The Gradient Overlay to make text/search readable */}
       <LinearGradient
         colors={['transparent', '#121212']} // Fades from transparent to your app's background color
