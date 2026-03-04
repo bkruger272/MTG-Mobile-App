@@ -144,64 +144,76 @@ const handlePin = (item) => {
 };
 
 
-  const handleScanResult = async (detectedName) => {
-    if (!detectedName) return;
-    
-    setShowScanner(false);
-    setLoading(true);
-    setSearchQuery(detectedName);
+const handleScanResult = async (detectedName) => {
+      if (!detectedName) return;
+      
+      // 1. Aggressive Clean: Remove EVERYTHING except letters, numbers, and spaces
+      const cleanName = detectedName.replace(/[^a-zA-Z0-9\s]/g, "").trim();
+      
+      const scryfallUrl = `https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(cleanName)}`;
+      console.log("DEBUG: Fetching from URL ->", scryfallUrl); 
+      
+      setShowScanner(false);
+      setLoading(true);
 
-    try {
-      // 1. Get exact card data from Scryfall
-      const response = await fetch(`https://api.scryfall.com/cards/named?exact=${encodeURIComponent(detectedName)}`);
-      
-      if (!response.ok) {
-      alert(`The Grimoire couldn't find a match for "${detectedName}". Try a different angle!`);
-      return;
-    }
-      
-      const cardData = await response.json();
-      
-      setSearchQuery(cardData.name);
+          try {
+          const scryfallRes = await fetch(scryfallUrl, {
+              method: 'GET',
+              headers: {
+                  // Scryfall specifically asks for these two
+                  'User-Agent': 'GrimoireMTG/1.1.0', 
+                  'Accept': 'application/json',
+              }
+          });
+          
+          if (!scryfallRes.ok) {
+              const errorData = await scryfallRes.json();
+              console.log("Scryfall Error Details:", errorData.details);
+              alert(`Grimoire Error: ${errorData.details}`);
+              setLoading(false);
+              return;
+          }
+          
+          const cardData = await scryfallRes.json();
+          console.log("Card Data Found:", cardData.name, "Keywords:", cardData.keywords);
+          const keywordsToLookup = cardData.keywords || [];
 
-      const keywords = cardData.keywords || [];
-      
-      if (keywords.length === 0) {
-        alert(`Found "${cardData.name}", but it has no keyword abilities!`);
-        return;
+          // Update the UI to show which card we found
+          setSearchQuery(`Card: ${cardData.name}`);
+
+          if (keywordsToLookup.length === 0) {
+              alert(`"${cardData.name}" is a vanilla card (no keywords).`);
+              setLoading(false);
+              return;
+          }
+
+          // 2. KEYWORD TRACK: Feed those keywords into your existing backend lookup
+          const foundDefinitions = [];
+          for (const word of keywordsToLookup) {
+                // Try searching for the word as-is
+                const data = await searchKeywords(word.toLowerCase(), true); 
+                if (data && data[0]) {
+                    foundDefinitions.push({
+                        name: data[0].name,
+                        description: data[0].definition,
+                        source: data[0].source
+                  });
+              }
+          }
+
+          // 3. DISPLAY: Pin the results to the top
+          setPinnedWords((prev) => {
+              const existingNames = new Set(prev.map(p => p.name));
+              const freshOnes = foundDefinitions.filter(d => !existingNames.has(d.name));
+              return [...freshOnes, ...prev];
+          });
+
+      } catch (error) {
+          console.error("Dual-track process failed:", error);
+      } finally {
+          setLoading(false);
       }
-
-      // 3. Automatically fetch definitions and "Pin" them
-      const newPinnedItems = [];
-        for (const word of keywordsFound) {
-            try {
-                const definitionData = await searchKeywords(word);
-                if (definitionData && definitionData[0]) {
-                newPinnedItems.push({
-                    name: definitionData[0].name,
-                    description: definitionData[0].definition,
-                    source: definitionData[0].source,
-                });
-                }
-            } catch (e) {
-                console.log(`Definition for ${word} not found in backend.`);
-            }
-        }
-
-      // 4. Update the UI with the pinned results
-        setPinnedWords((prev) => {
-            const existingNames = new Set(prev.map((p) => p.name));
-            const filteredNew = newPinnedItems.filter((item) => !existingNames.has(item.name));
-            return [...filteredNew, ...prev];
-            });
-
-        } catch (error) {
-            console.error("Scan processing failed:", error);
-            alert("The Grimoire is flickering. Check your internet connection!");
-        } finally {
-            setLoading(false);
-        }
-    };
+  };
 
 
     return (
@@ -253,10 +265,16 @@ const handlePin = (item) => {
 
             <TouchableOpacity 
                 style={{ backgroundColor: COLORS.border, padding: 10, borderRadius: 5, flex: 1 }} 
-                onPress={() => setHistory([])}
+                onPress={() => {
+                    setHistory([]);      // Clears chips
+                    setPinnedWords([]);   // Clears the Trample/Haste banners
+                    setResults([]);       // Clears the main result
+                    setSearchQuery('');   // Clears the text input
+                }}
             >
-                <Text style={{ color: COLORS.textLight, fontWeight: 'bold', textAlign: 'center' }}>Clear</Text>
+                <Text style={{ color: COLORS.textLight, fontWeight: 'bold', textAlign: 'center' }}>Clear All</Text>
             </TouchableOpacity>
+            
             </View>
 
             {/* 5. HISTORY CHIPS */}
@@ -309,7 +327,7 @@ const handlePin = (item) => {
         {/* 7. FOOTER */}
         <View style={{ padding: 15, backgroundColor: COLORS.background }}>
             <Text style={{ color: COLORS.textLight, fontSize: 10, textAlign: 'center', opacity: 0.6 }}>
-            Version 1.1.0 | © 2026 Brandon Kruger{"\n"}
+            Version 1.1.1 | © 2026 Brandon Kruger{"\n"}
             Camera used for card identification only. No data is stored.
             </Text>
         </View>

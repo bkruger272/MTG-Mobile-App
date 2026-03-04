@@ -21,7 +21,7 @@ const Header = () => {
       />
 
       <View style={styles.textContainer}>
-        <Text style={styles.title}>MTG Scanner</Text>
+        <Text style={styles.title}>MTG Keyword Scanner</Text>
         <Text style={styles.subtitle}>Master the Rules</Text>
       </View>
     </View>

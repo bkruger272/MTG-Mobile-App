@@ -6,27 +6,23 @@ const BASE_URL = 'https://mtg-keyword-backend.onrender.com/api';
 
 let searchController = null; // Holds the current request
 
-export const searchKeywords = async (word) => {
-  if (searchController) {
+export const searchKeywords = async (word, isAuto = false) => {
+  // Only abort if it's a manual user-typed search
+  if (searchController && !isAuto) {
     searchController.abort();
   }
 
   searchController = new AbortController();
 
   try {
-    // FIX: Use BASE_URL and change 'word=' to 'q='
     const response = await fetch(`${BASE_URL}/search?q=${encodeURIComponent(word)}`, {
-      signal: searchController.signal 
+      signal: isAuto ? null : searchController.signal // Don't use signal for auto-scans
     });
     
     if (!response.ok) throw new Error('Network response was not ok');
-    
     return await response.json();
   } catch (error) {
-    if (error.name === 'AbortError') {
-      console.log('Spam search blocked');
-      return null; 
-    }
+    if (error.name === 'AbortError') return null; 
     throw error;
   }
 };

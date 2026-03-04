@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react'; // Added useRef here
 import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import { 
   Camera, 
@@ -7,72 +7,100 @@ import {
   useFrameProcessor, 
   runOnJS 
 } from 'react-native-vision-camera';
-import { scanText } from 'react-native-vision-camera-ocr-plus';
 import { COLORS } from '../Styles/theme';
+import MlkitOcr from 'react-native-mlkit-ocr';
+
+
 
 export default function ScannerView({ onCardDetected, onClose }) {
-  // 1. ALL Hooks must be inside the function
   const { hasPermission, requestPermission } = useCameraPermission();
   const device = useCameraDevice('back');
   const [detectedName, setDetectedName] = useState("");
-  const [isCameraReady, setIsCameraReady] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false); // "Wait" status
+  const camera = useRef(null); // This is now valid
+  const [isScanning, setIsScanning] = useState(false);
 
-  // 2. Handle permissions inside the component lifecycle
+
   useEffect(() => {
     if (!hasPermission) {
       requestPermission();
     }
   }, [hasPermission, requestPermission]);
 
-  // 3. The Frame Processor using the modern runOnJS bridge
-  const frameProcessor = useFrameProcessor((frame) => {
-      'worklet';
-      if (isProcessing) return;
+const handleManualScan = () => {
+    // This allows us to trigger the scan on demand
+    if (detectedName && detectedName !== "Scanning...") {
+      onCardDetected(detectedName);
+    } else {
+      console.log("Still looking for a name... try adjusting the card.");
+    }
+  };
 
-      // Safety check: only run if the function actually exists in this thread
-      if (typeof scanText !== 'undefined') {
-        try {
-          const data = scanText(frame);
-          if (data?.result?.blocks?.length > 0) {
-            const cardName = data.result.blocks[0].text.split('\n')[0];
-            runOnJS(setDetectedName)(cardName);
-          }
-        } catch (e) {
-          // Log sparingly to stop the churn
-        }
+
+
+// ... inside your ScannerView component ...
+
+const takeSnapshot = async () => {
+  if (camera.current && !isScanning) {
+    try {
+      setIsScanning(true);
+      setDetectedName("Consulting the Grimoire...");
+
+      // 1. Capture a high-res photo
+      const photo = await camera.current.takePhoto({
+        flash: 'off',
+      });
+
+      // 2. Run the high-accuracy OCR on the file path
+      // Note: We use 'file://' prefix for Android paths
+      const result = await MlkitOcr.detectFromFile(`file://${photo.path}`);
+
+      if (result && result.length > 0) {
+        // Magic card names are almost always in the first detected block
+        const cardName = result[0].text.split('\n')[0];
+        
+        console.log("Found Card:", cardName);
+        setDetectedName(cardName);
+
+        // 3. Send to main app to trigger Trample/Haste banners!
+        onCardDetected(cardName);
+      } else {
+        alert("The Grimoire couldn't read the name. Try centering it in the box!");
       }
-  }, [isProcessing]);
-
-  // 4. Loading state if device isn't ready
-  if (!hasPermission) return <View style={styles.container}><Text style={styles.info}>Waiting for Camera Permission...</Text></View>;
-  // Safety check for the camera hardware
-  if (device == null) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.info}>Waking up the camera lens...</Text>
-      </View>
-    );
+    } catch (e) {
+      console.log("OCR Error:", e);
+      setDetectedName("Scan failed. Try again!");
+    } finally {
+      setIsScanning(false);
+    }
   }
-return (
+};
+
+  // 2. Disable the "Live" frame processor to stop the error flooding
+  const frameProcessor = useFrameProcessor((frame) => {
+    'worklet';
+    // Keeping it empty to stop the 'Internal Error' logs
+  }, []);
+  if (!hasPermission) return <View style={styles.container}><Text style={styles.info}>Waiting for Permission...</Text></View>;
+  if (device == null) return <View style={styles.container}><Text style={styles.info}>Waking up lens...</Text></View>;
+
+  return (
     <View style={styles.mainContainer}>
-      {/* This is the "Window" for the camera */}
       <View style={styles.cameraContainer}>
         <Camera
+          ref={camera} // CRITICAL: This connects the ref to the hardware
           style={styles.camera}
           device={device}
           isActive={true}
           frameProcessor={frameProcessor}
           pixelFormat="yuv"
+          photo={true} // Enable photo capture mode
         />
-        {/* Viewfinder stays inside the camera window */}
         <View style={styles.viewfinder} />
       </View>
       
-      {/* Controls stay outside the window at the bottom */}
       <View style={styles.controls}>
         <Text style={styles.scanText}>
-          {detectedName ? `Found: ${detectedName}` : "Point at Card Name"}
+           Manual Test Mode: Press Confirm to Snapshot
         </Text>
         
         <View style={styles.buttonRow}>
@@ -81,17 +109,20 @@ return (
           </TouchableOpacity>
 
           <TouchableOpacity 
-            style={[styles.confirmButton, !detectedName && {opacity: 0.5}]} 
-            onPress={() => detectedName && onCardDetected(detectedName)}
-            disabled={!detectedName}
+            style={styles.confirmButton} 
+            onPress={takeSnapshot}
+            disabled={isScanning}
           >
-            <Text style={styles.buttonText}>Confirm</Text>
+            <Text style={styles.buttonText}>
+              {isScanning ? "Reading..." : "Confirm Scan"}
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
     </View>
   );
 }
+
 const styles = StyleSheet.create({
   mainContainer: { 
     flex: 1, 
@@ -115,12 +146,12 @@ const styles = StyleSheet.create({
   },
   viewfinder: { 
     position: 'absolute',
-    top: '10%', // Position it over the card's name area
+    top: 40,           // Move it to the top of the camera window
     alignSelf: 'center',
-    width: '80%', 
-    height: 40, 
-    borderWidth: 1, 
-    borderColor: 'rgba(255,215,0,0.5)', 
+    width: '90%',      
+    height: 45,        // Thin box just for the name
+    borderWidth: 2, 
+    borderColor: COLORS.gold, 
     borderRadius: 5, 
     backgroundColor: 'rgba(255,215,0,0.1)' 
   },
